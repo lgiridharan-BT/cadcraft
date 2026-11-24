@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026: About dialog wording (fork notice, no ArtCraft branding).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Dialogs: Drafting Settings, Drawing Units, About, command reference, blocks; dispatches the
 //! Layer Properties Manager ([`crate::layers`]), Quick Select ([`crate::quick`]), Parameters
 //! Manager ([`crate::parametric`]) and the style and settings managers ([`crate::managers`]).
@@ -357,9 +359,11 @@ fn about(ctx: &egui::Context, open: &mut bool) {
                     ui.label(crate::tf!("Version {version}", version = env!("CARGO_PKG_VERSION")));
                     ui.label(crate::tl!("Computer-aided design and drafting: an open-source, clean-room CAD application written in pure Rust."));
                     ui.add_space(6.0);
-                    ui.label(RichText::new(crate::tl!("One of the Crafting Apps by the ArtCraft team and community.")).color(t.text_dim));
-                    ui.hyperlink_to("getartcraft.com/apps/cadcraft", "https://getartcraft.com/apps/cadcraft");
-                    ui.hyperlink_to(crate::tl!("Join us on Discord"), "https://discord.gg/artcraft");
+                    // BridgeTower GP modification: a modified build may not present itself as an
+                    // ArtCraft product (docs/brand/LICENSE-brand.txt), only say what it is based on.
+                    ui.label(RichText::new("BridgeTower GP build, based on CADCraft by the ArtCraft team and community. Not an official CADCraft release.").color(t.text_dim));
+                    ui.hyperlink_to("Original project: github.com/storytold/cadcraft", "https://github.com/storytold/cadcraft");
+                    ui.hyperlink_to("This build: github.com/lgiridharan-BT/cadcraft", "https://github.com/lgiridharan-BT/cadcraft");
                     ui.add_space(6.0);
                     ui.label(RichText::new(crate::tl!("MIT OR Apache-2.0. Not affiliated with Autodesk, Inc.")).small().color(t.text_faint));
                 }

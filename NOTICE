@@ -172,3 +172,11 @@ Original src/avx2/fdct.rs opening notice
  * Based on the x86 SIMD extension for IJG JPEG library
  * Copyright (C) 1999-2006, MIYASAKA Masaru.
  */
+
+
+Modifications by BridgeTower GP
+
+This copy is a modified version of CADCraft, made by BridgeTower GP in November 2026 and
+distributed under the same MIT OR Apache-2.0 terms. It is not an official CADCraft or ArtCraft
+release and is not endorsed by the ArtCraft Team. The ArtCraft logo files have been removed as
+docs/brand/LICENSE-brand.txt requires. The modified files are listed in BRIDGETOWER-CHANGES.md.

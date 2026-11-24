@@ -1,11 +1,8 @@
-<p align="center">
-  <a href="https://getartcraft.com/">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/brand/artcraft-logo-white.svg">
-      <img alt="ArtCraft" src="docs/brand/artcraft-logo.svg" width="200">
-    </picture>
-  </a>
-</p>
+> **BridgeTower GP build.** This repository is a modified fork of
+> [CADCraft](https://github.com/storytold/cadcraft) by the ArtCraft team and community. It is not
+> an official CADCraft or ArtCraft release and is not endorsed by the ArtCraft Team. The ArtCraft
+> logos have been removed as the ArtCraft brand terms require for modified versions. Changes made in
+> this fork are listed in [BRIDGETOWER-CHANGES.md](BRIDGETOWER-CHANGES.md).
 
 <p align="center">
   <img src="assets/app-icon/hicolor/256x256/apps/ai.storyteller.cadcraft.png" width="128" height="128" alt="CADCraft icon: a drafting set square and compass arc on a blue grid tile">
@@ -460,11 +457,11 @@ original work, drawn or defined in code. The sample drawings are generated in co
 The ArtCraft name, wordmark and logos in [`docs/brand/`](docs/brand/) are trademarks of the
 ArtCraft Team and are not covered by this license. They may be used only unmodified, and only as
 part of this repository and CADCraft, under [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt).
-Forks and modified versions must remove them.
+Forks and modified versions must remove them; this fork has removed the logo files and keeps only
+`docs/brand/LICENSE-brand.txt` for reference.
 
 <p align="center">
-  <a href="https://getartcraft.com/"><img alt="ArtCraft" src="docs/brand/artcraft-mark.svg" width="28"></a><br>
-  <sub>Made by the <a href="https://getartcraft.com/">ArtCraft</a> team and community.</sub>
+  <sub>Based on CADCraft by the ArtCraft team and community. Modified by BridgeTower GP.</sub>
 </p>
 
 Tool Sets, Layers, and Properties can be regrouped, split, floated within the app window, closed, and reopened. The drawing canvas stays visible and cannot be closed or turned into a tab. Drag a panel header to a target edge or another header. Its context menu offers Float panel, Move to group, and Close panel. Existing panel toggles reopen panels at their saved location; Reset Panel Layout restores the app layout. Floating panels remain inside the current app window.

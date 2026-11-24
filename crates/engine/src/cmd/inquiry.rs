@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026: z_at / insert_z: ID reports the Z of objects inside block references.
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Inquiry: DIST, ID, LIST, AREA, drawing inspection for agents.
 
 use std::collections::{BTreeMap, BTreeSet};

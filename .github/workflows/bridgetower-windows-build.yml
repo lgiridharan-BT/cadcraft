@@ -44,7 +44,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item target\release\cadcraft.exe, target\release\cadcraft-cli.exe dist\
-          Copy-Item LICENSE-APACHE, LICENSE-MIT, NOTICE dist\
+          Copy-Item README.md, LICENSE-APACHE, LICENSE-MIT, NOTICE, ATTRIBUTION.md, BRIDGETOWER-CHANGES.md dist\
+          Copy-Item docs\brand\LICENSE-brand.txt dist\ARTCRAFT-BRAND-TERMS.txt
           Compress-Archive -Path dist\* -DestinationPath cadcraft-windows-x64.zip -Force
           Get-FileHash dist\cadcraft.exe -Algorithm SHA256 | Format-List
 
@@ -60,7 +61,7 @@ jobs:
         run: |
           $tag = "bridgetower-latest"
           gh release delete $tag --yes --cleanup-tag 2>$null
-          gh release create $tag cadcraft-windows-x64.zip dist\cadcraft.exe `
+          gh release create $tag cadcraft-windows-x64.zip dist\cadcraft.exe dist\NOTICE dist\LICENSE-MIT dist\LICENSE-APACHE `
             --target $env:GITHUB_SHA `
             --title "CADCraft (BridgeTower build) $($env:GITHUB_SHA.Substring(0,7))" `
-            --notes "Built from $env:GITHUB_SHA. Includes the ID Z-inside-blocks fix. Download cadcraft.exe and run it; no install needed."
+            --notes "BridgeTower GP build of CADCraft (https://github.com/storytold/cadcraft), built from $env:GITHUB_SHA. Not an official CADCraft or ArtCraft release. MIT OR Apache-2.0: the licence and notice files are in the zip and attached here; changes are in BRIDGETOWER-CHANGES.md. Download cadcraft.exe (or the zip) and run it; no install needed."

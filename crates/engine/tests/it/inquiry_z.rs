@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026: added the id_reports_the_z_of_an_object_inside_a_block_reference test.
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! ID, DIST and LIST report Z: the Z of what is drawn at a picked point (a survey point, a 3D
 //! line, a contour polyline's elevation, a TIN face), and the Z of the objects LIST shows. They
 //! all said Z = 0, so a topographic drawing's levels couldn't be read in CADCraft.
