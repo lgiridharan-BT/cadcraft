@@ -273,11 +273,60 @@ pub(crate) fn z_at(s: &Session, p: Vec2) -> f64 {
     let elevation = d.header.f64("ELEVATION", 0.0);
     let ap = s.pixel_size() * s.settings.pickbox.max(1.0) * 1.5;
     let space = s.space();
-    crate::select::pick(d, &space, p, ap)
-        .and_then(|h| d.entity(h))
-        .and_then(|e| entity_z(e, p))
-        .filter(|z| z.is_finite())
+    // Of the objects under the point, the nearest one gives its Z (the first, topmost, on a
+    // tie). A block reference is measured by the object inside it nearest the point, so a snap
+    // onto a spot-elevation marker or a contour inside a Civil 3D block gives that object's Z,
+    // not the reference's own insertion Z.
+    crate::select::pick_all(d, &space, p, ap)
+        .into_iter()
+        .filter_map(|h| d.entity(h))
+        .filter_map(|e| match &e.kind {
+            EntityKind::Insert(ins) => insert_z(d, ins, p).filter(|(dist, _)| *dist <= ap),
+            _ => Some((crate::select::entity_distance(d, e, p, ap / 4.0), entity_z(e, p)?)),
+        })
+        .filter(|(dist, z)| dist.is_finite() && z.is_finite())
+        .fold(None::<(f64, f64)>, |best, c| match best {
+            Some(b) if b.0 <= c.0 => Some(b),
+            _ => Some(c),
+        })
+        .map(|(_, z)| z)
         .unwrap_or(if elevation.is_finite() { elevation } else { 0.0 })
+}
+
+/// The object inside block reference `ins` (nested references expanded) nearest `p`: its
+/// distance from `p` and its Z there in world coordinates, as an object snap onto it finds it.
+fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2) -> Option<(f64, f64)> {
+    #[allow(clippy::too_many_arguments)]
+    fn walk(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, m: &cadcraft_geom::Mat3, z0: f64, zs: f64, depth: usize, p: Vec2, best: &mut Option<(f64, f64)>) {
+        if depth >= cadcraft_doc::MAX_BLOCK_DEPTH {
+            return;
+        }
+        let Some(b) = d.block(&ins.block) else { return };
+        let mm = m.then_before(ins.transform(b.base.xy()));
+        // Heights: the block's base Z sits at the insertion Z, scaled by the Z scale.
+        let zs2 = zs * ins.scale.z;
+        let z02 = z0 + zs * ins.insert.z - zs2 * b.base.z;
+        for e in b.entities.iter() {
+            match &e.kind {
+                EntityKind::Insert(inner) => walk(d, inner, &mm, z02, zs2, depth + 1, p, best),
+                EntityKind::AttDef(_) => {}
+                _ => {
+                    let mut leaf = Entity::clone(e);
+                    leaf.kind.transform(&mm);
+                    let dist = super::curves::kind_distance(&leaf.kind, p);
+                    if !dist.is_finite() || best.is_some_and(|(bd, _)| bd <= dist) {
+                        continue;
+                    }
+                    if let Some(z) = entity_z(&leaf, p).filter(|z| z.is_finite()) {
+                        *best = Some((dist, z02 + zs2 * z));
+                    }
+                }
+            }
+        }
+    }
+    let mut best = None;
+    walk(d, ins, &cadcraft_geom::Mat3::IDENTITY, 0.0, 1.0, 0, p, &mut best);
+    best
 }
 
 /// The Z of `e` at the point of it nearest `p` (seen from above), when it has one there.

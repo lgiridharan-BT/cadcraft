@@ -106,3 +106,35 @@ fn list_shows_the_z_values_objects_have() {
     assert!(text.contains("Delta Z = 50.0000"), "{text}");
     assert!(text.contains("elevation   1880.0000") && text.contains("Z=1880.0000"), "{text}");
 }
+
+#[test]
+fn id_reports_the_z_of_an_object_inside_a_block_reference() {
+    // Civil 3D spot-elevation labels come into a DWG as anonymous blocks inserted at 0,0,0 whose
+    // marker and text carry the level: ID on the marker gave the reference's Z, 0.
+    let mut s = Session::new();
+    let marker = add(&mut s, EntityKind::Circle(cadcraft_engine::doc::Circle { center: Vec3::new(100.0, 100.0, 593.45), radius: 0.4 }));
+    let c = add(&mut s, contour(590.0));
+    s.execute("block", &json!({ "name": "Spot", "base": [0, 0], "handles": [marker.hex(), c.hex()], "keep": "delete" })).unwrap();
+    s.execute("insert", &json!({ "name": "Spot", "at": [0, 0] })).unwrap();
+    // A plain line beside it keeps its own Z.
+    add(&mut s, EntityKind::Line(Line { a: Vec3::new(120.0, 100.0, 12.0), b: Vec3::new(140.0, 100.0, 12.0) }));
+    s.cmdline("zoom e").ok();
+    assert!((z(&mut s, [100.4, 100.0]) - 593.45).abs() < 1e-9, "spot marker inside the block");
+    assert!((z(&mut s, [40.0, 55.0]) - 590.0).abs() < 1e-9, "contour inside the block");
+    assert!((z(&mut s, [130.0, 100.0]) - 12.0).abs() < 1e-9, "plain line next to the block");
+    // A block moved up and stretched in Z carries its contents with it.
+    s.execute("insert", &json!({ "name": "Spot", "at": [1000, 0], "scale": 2.0 })).unwrap();
+    let h = *s.doc().unwrap().model.handles().last().unwrap();
+    s.doc_mut()
+        .unwrap()
+        .modify_entity(h, |e| {
+            if let EntityKind::Insert(i) = &mut e.kind {
+                i.insert.z = 10.0;
+            }
+        })
+        .unwrap();
+    s.cmdline("zoom e").ok();
+    assert!((z(&mut s, [1200.8, 200.0]) - (10.0 + 2.0 * 593.45)).abs() < 1e-9, "inserted at Z 10, Z scale 2");
+    // Nothing near: the current elevation, as before.
+    assert_eq!(z(&mut s, [-5000.0, -5000.0]), 0.0);
+}

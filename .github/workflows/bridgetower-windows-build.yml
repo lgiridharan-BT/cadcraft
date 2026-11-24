@@ -1,0 +1,66 @@
+name: BridgeTower Windows build
+
+# Every push to main: run the engine tests, build a self-contained cadcraft.exe and publish it
+# as the "bridgetower-latest" release, so any PC can download it without Rust or a build.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bt-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 150
+    env:
+      CARGO_TERM_COLOR: always
+      # Static C runtime: the exe runs on a PC without the Visual C++ redistributable.
+      RUSTFLAGS: -C target-feature=+crt-static
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Engine tests (Z / ID and the main suite)
+        run: cargo test --release -p cadcraft-engine --test it
+
+      - name: Build cadcraft.exe
+        run: cargo build --release -p cadcraft -p cadcraft-cli
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item target\release\cadcraft.exe, target\release\cadcraft-cli.exe dist\
+          Copy-Item LICENSE-APACHE, LICENSE-MIT, NOTICE dist\
+          Compress-Archive -Path dist\* -DestinationPath cadcraft-windows-x64.zip -Force
+          Get-FileHash dist\cadcraft.exe -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadcraft-windows-x64
+          path: cadcraft-windows-x64.zip
+
+      - name: Publish release "bridgetower-latest"
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "bridgetower-latest"
+          gh release delete $tag --yes --cleanup-tag 2>$null
+          gh release create $tag cadcraft-windows-x64.zip dist\cadcraft.exe `
+            --target $env:GITHUB_SHA `
+            --title "CADCraft (BridgeTower build) $($env:GITHUB_SHA.Substring(0,7))" `
+            --notes "Built from $env:GITHUB_SHA. Includes the ID Z-inside-blocks fix. Download cadcraft.exe and run it; no install needed."
