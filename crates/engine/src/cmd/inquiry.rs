@@ -1,4 +1,5 @@
-// Modified by BridgeTower GP, November 2026: z_at / insert_z: ID reports the Z of objects inside block references.
+// Modified by BridgeTower GP, November 2026: z_at / insert_z / at_distance: ID reports the Z of objects inside block references,
+// including at a circle's centre or inside a solid fill.
 // See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Inquiry: DIST, ID, LIST, AREA, drawing inspection for agents.
 
@@ -275,18 +276,22 @@ pub(crate) fn z_at(s: &Session, p: Vec2) -> f64 {
     let elevation = d.header.f64("ELEVATION", 0.0);
     let ap = s.pixel_size() * s.settings.pickbox.max(1.0) * 1.5;
     let space = s.space();
-    // Of the objects under the point, the nearest one gives its Z (the first, topmost, on a
-    // tie). A block reference is measured by the object inside it nearest the point, so a snap
-    // onto a spot-elevation marker or a contour inside a Civil 3D block gives that object's Z,
-    // not the reference's own insertion Z.
-    crate::select::pick_all(d, &space, p, ap)
+    // Of the objects at the point, the nearest one gives its Z (the first, topmost, on a tie).
+    // "At" counts a circle's or arc's centre and the inside of a solid fill, so a centre snap or
+    // a click in a filled spot-elevation dot finds it. A block reference is measured by the
+    // object inside it nearest the point, so a spot elevation or a contour inside a Civil 3D
+    // block gives that object's Z, not the reference's own insertion Z.
+    let ix = crate::spatial::index(d, &space);
+    let probe = cadcraft_geom::Bounds2::new(p, p).expand(ap);
+    crate::select::candidates(d, &space, &ix, &probe.expand(ap), true, true)
         .into_iter()
-        .filter_map(|h| d.entity(h))
-        .filter_map(|e| match &e.kind {
-            EntityKind::Insert(ins) => insert_z(d, ins, p).filter(|(dist, _)| *dist <= ap),
-            _ => Some((crate::select::entity_distance(d, e, p, ap / 4.0), entity_z(e, p)?)),
+        .flatten()
+        .filter(|(e, known)| d.is_visible(e) && (crate::select::is_infinite(e) || crate::select::bounds_of(d, e, *known).expand(ap).intersects(&probe)))
+        .filter_map(|(e, _)| match &e.kind {
+            EntityKind::Insert(ins) => insert_z(d, ins, p, ap),
+            _ => Some((at_distance(d, e, p, ap), entity_z(e, p)?)),
         })
-        .filter(|(dist, z)| dist.is_finite() && z.is_finite())
+        .filter(|(dist, z)| *dist <= ap && z.is_finite())
         .fold(None::<(f64, f64)>, |best, c| match best {
             Some(b) if b.0 <= c.0 => Some(b),
             _ => Some(c),
@@ -295,11 +300,23 @@ pub(crate) fn z_at(s: &Session, p: Vec2) -> f64 {
         .unwrap_or(if elevation.is_finite() { elevation } else { 0.0 })
 }
 
-/// The object inside block reference `ins` (nested references expanded) nearest `p`: its
-/// distance from `p` and its Z there in world coordinates, as an object snap onto it finds it.
-fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2) -> Option<(f64, f64)> {
+/// How far `p` is from `e` for [`z_at`]: its pick distance, with a circle's or arc's centre
+/// counting as on it (where a centre snap puts the point).
+fn at_distance(d: &cadcraft_doc::Drawing, e: &Entity, p: Vec2, ap: f64) -> f64 {
+    let pick = crate::select::entity_distance(d, e, p, ap / 4.0);
+    let centre = match &e.kind {
+        EntityKind::Circle(c) => c.center.xy().dist(p),
+        EntityKind::Arc(a) => a.center.xy().dist(p),
+        _ => f64::INFINITY,
+    };
+    pick.min(centre)
+}
+
+/// The object inside block reference `ins` (nested references expanded) nearest `p`, by
+/// [`at_distance`]: its distance from `p` and its Z there in world coordinates.
+fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2, ap: f64) -> Option<(f64, f64)> {
     #[allow(clippy::too_many_arguments)]
-    fn walk(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, m: &cadcraft_geom::Mat3, z0: f64, zs: f64, depth: usize, p: Vec2, best: &mut Option<(f64, f64)>) {
+    fn walk(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, m: &cadcraft_geom::Mat3, z0: f64, zs: f64, depth: usize, p: Vec2, ap: f64, best: &mut Option<(f64, f64)>) {
         if depth >= cadcraft_doc::MAX_BLOCK_DEPTH {
             return;
         }
@@ -310,12 +327,12 @@ fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2) -> O
         let z02 = z0 + zs * ins.insert.z - zs2 * b.base.z;
         for e in b.entities.iter() {
             match &e.kind {
-                EntityKind::Insert(inner) => walk(d, inner, &mm, z02, zs2, depth + 1, p, best),
+                EntityKind::Insert(inner) => walk(d, inner, &mm, z02, zs2, depth + 1, p, ap, best),
                 EntityKind::AttDef(_) => {}
                 _ => {
                     let mut leaf = Entity::clone(e);
                     leaf.kind.transform(&mm);
-                    let dist = super::curves::kind_distance(&leaf.kind, p);
+                    let dist = at_distance(d, &leaf, p, ap);
                     if !dist.is_finite() || best.is_some_and(|(bd, _)| bd <= dist) {
                         continue;
                     }
@@ -327,7 +344,7 @@ fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2) -> O
         }
     }
     let mut best = None;
-    walk(d, ins, &cadcraft_geom::Mat3::IDENTITY, 0.0, 1.0, 0, p, &mut best);
+    walk(d, ins, &cadcraft_geom::Mat3::IDENTITY, 0.0, 1.0, 0, p, ap, &mut best);
     best
 }
 

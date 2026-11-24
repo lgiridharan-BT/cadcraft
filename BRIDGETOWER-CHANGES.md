@@ -6,8 +6,8 @@ licence notices are kept unchanged. Changes made by BridgeTower GP:
 
 | File | Change |
 |---|---|
-| `crates/engine/src/cmd/inquiry.rs` | `ID` (and the Z lookup behind it) reports the Z of the object inside a block reference nearest the picked point, instead of the reference's own insertion Z. Civil 3D spot-elevation labels read 0 before this. |
-| `crates/engine/tests/it/inquiry_z.rs` | Test for the change above. |
+| `crates/engine/src/cmd/inquiry.rs` | `ID` (and the Z lookup behind it) reports the Z of the object inside a block reference nearest the picked point, instead of the reference's own insertion Z. Civil 3D spot-elevation labels read 0 before this. A circle's or arc's centre and the inside of a solid fill count as on the object, so a Center snap or a click in the middle of a spot dot gives its Z. |
+| `crates/engine/tests/it/inquiry_z.rs` | Tests for the change above. |
 | `crates/ui-egui/src/dialogs.rs` | About dialog: states this is a BridgeTower build based on CADCraft; ArtCraft links removed. |
 | `.github/workflows/bridgetower-windows-build.yml` | Windows build: runs the engine tests, builds `cadcraft.exe`, publishes the `bridgetower-latest` release with the licence and notice files. |
 | `docs/brand/*.png`, `docs/brand/*.svg` | Removed (ArtCraft trademarks; the brand terms require modified versions to remove them). `docs/brand/LICENSE-brand.txt` kept. |

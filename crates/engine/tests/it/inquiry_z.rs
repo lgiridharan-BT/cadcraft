@@ -140,3 +140,22 @@ fn id_reports_the_z_of_an_object_inside_a_block_reference() {
     // Nothing near: the current elevation, as before.
     assert_eq!(z(&mut s, [-5000.0, -5000.0]), 0.0);
 }
+
+#[test]
+fn id_at_the_centre_of_a_small_spot_dot_inside_a_block_reports_its_z() {
+    // A Civil 3D spot-elevation dot: a 0.4-unit circle inside a block at 0,0,0. A centre snap or a
+    // click in the middle of the dot lands a whole radius from the circle's outline, beyond the
+    // pick box when zoomed in; it still means that dot.
+    let mut s = Session::new();
+    let dot = add(&mut s, EntityKind::Circle(cadcraft_engine::doc::Circle { center: Vec3::new(100.0, 100.0, 593.45), radius: 0.4 }));
+    s.execute("block", &json!({ "name": "Dot", "base": [0, 0], "handles": [dot.hex()], "keep": "delete" })).unwrap();
+    s.execute("insert", &json!({ "name": "Dot", "at": [0, 0] })).unwrap();
+    // A plain circle beside it, outside any block.
+    add(&mut s, EntityKind::Circle(cadcraft_engine::doc::Circle { center: Vec3::new(110.0, 100.0, 12.5), radius: 0.4 }));
+    s.cmdline("zoom w 95,95 115,105").ok();
+    assert!((z(&mut s, [100.0, 100.0]) - 593.45).abs() < 1e-9, "centre of the dot inside the block");
+    assert!((z(&mut s, [100.4, 100.0]) - 593.45).abs() < 1e-9, "on the dot's outline");
+    assert!((z(&mut s, [110.0, 100.0]) - 12.5).abs() < 1e-9, "centre of a plain circle");
+    // Between the two, near neither: the current elevation.
+    assert_eq!(z(&mut s, [105.0, 100.0]), 0.0);
+}
