@@ -192,7 +192,7 @@ fn run_pdfimport(s: &mut Session, p: &Value) -> Result<Value> {
         #[cfg(not(target_arch = "wasm32"))]
         let path = super::blocks::xref::find_file(path, host.as_deref()).map_or_else(|| path.to_string(), |f| f.to_string_lossy().to_string());
         #[cfg(target_arch = "wasm32")]
-        let _ = host;
+        let (path, _) = (path.to_string(), host);
         (read_file(&path)?, path)
     } else {
         let data = str_param(p, "data").ok_or_else(|| bad("pdfimport", "`path` or `data` (base64) is required"))?;

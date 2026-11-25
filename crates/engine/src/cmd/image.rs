@@ -350,7 +350,7 @@ fn pdf_page_image(s: &Session, p: &Value, path: &str) -> Result<(String, Arc<Ras
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = (s, hooks, index, dpi);
+        let _ = (s, hooks, index, dpi, path);
         Err(bad(ID, "PDF files can't be attached on the web"))
     }
 }
