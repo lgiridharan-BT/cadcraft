@@ -63,10 +63,34 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+        # Update the one rolling release in place rather than delete-and-recreate (the delete can
+        # fail or lag, and then the create collides with "release already exists"). Order:
+        # point the tag at this commit, then replace the assets (or create the release if it is
+        # missing), then refresh the title and notes. Any failing gh call fails the step.
         run: |
-          $tag = "bridgetower-latest"
-          gh release delete $tag --yes --cleanup-tag 2>$null
-          gh release create $tag cadcraft-windows-x64.zip dist\cadcraft.exe dist\NOTICE dist\LICENSE-MIT dist\LICENSE-APACHE `
-            --target $env:GITHUB_SHA `
-            --title "CADCraft (BridgeTower build) $($env:GITHUB_SHA.Substring(0,7))" `
-            --notes "BridgeTower GP build of CADCraft (https://github.com/storytold/cadcraft), built from $env:GITHUB_SHA. Not an official CADCraft or ArtCraft release. MIT OR Apache-2.0: the licence and notice files are in the zip and attached here; changes are in BRIDGETOWER-CHANGES.md. Download cadcraft.exe (or the zip) and run it; no install needed."
+          $tag   = "bridgetower-latest"
+          $repo  = $env:GITHUB_REPOSITORY
+          $sha   = $env:GITHUB_SHA
+          $title = "CADCraft (BridgeTower build) $($sha.Substring(0,7))"
+          $notes = "BridgeTower GP build of CADCraft (https://github.com/storytold/cadcraft), build #$env:GITHUB_RUN_NUMBER from $sha. Not an official CADCraft or ArtCraft release. MIT OR Apache-2.0: the licence and notice files are in the zip and attached here; changes are in BRIDGETOWER-CHANGES.md. Download cadcraft.exe (or the zip) and run it; no install needed."
+          $files = @("cadcraft-windows-x64.zip", "dist\cadcraft.exe", "dist\NOTICE", "dist\LICENSE-MIT", "dist\LICENSE-APACHE")
+          function Check($what) { if ($LASTEXITCODE -ne 0) { throw "$what failed (exit $LASTEXITCODE)" } }
+
+          # 1. Tag -> this commit (move it if it exists, create it if not).
+          gh api "repos/$repo/git/ref/tags/$tag" --silent 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh api -X PATCH "repos/$repo/git/refs/tags/$tag" -f sha=$sha -F force=true --silent; Check "moving tag $tag"
+          } else {
+            gh api -X POST "repos/$repo/git/refs" -f ref="refs/tags/$tag" -f sha=$sha --silent; Check "creating tag $tag"
+          }
+
+          # 2. Release: replace the assets if it exists, otherwise create it on the tag.
+          gh release view $tag --json tagName 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @files --clobber; Check "uploading assets"
+            gh release edit $tag --title $title --notes $notes --latest; Check "editing release"
+          } else {
+            gh release create $tag @files --verify-tag --title $title --notes $notes --latest; Check "creating release"
+          }
+          gh release view $tag --json tagName,name,assets --jq '.name + "  ->  " + ([.assets[].name] | join(", "))'
+          $global:LASTEXITCODE = 0
