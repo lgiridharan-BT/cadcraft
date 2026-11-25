@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! File menu: new, close, switching drawings. Open/save of DWG/DXF go through the io layer,
 //! registered by the host (desktop/CLI) via [`crate::cmd::file::set_io`]. On the web, where there is
 //! no file system, saved files reach the user through the host's [`crate::cmd::file::set_deliver`].
@@ -47,6 +49,27 @@ pub fn set_io(h: IoHooks) {
 }
 pub fn io() -> Option<&'static IoHooks> {
     IO.get()
+}
+
+/// PDF reading (BridgeTower GP), installed by the app with the file formats: page sizes, a
+/// page's linework and text as a drawing (PDFIMPORT), and a page rendered to PNG (attaching a
+/// PDF page as an image). Builds without it say PDF is not available.
+pub struct PdfHooks {
+    /// Each page's size in inches (width, height).
+    pub pages: fn(&[u8]) -> std::result::Result<Vec<(f64, f64)>, String>,
+    /// Page `index` (0-based) as a drawing in paper inches.
+    pub read_page: fn(&[u8], usize) -> std::result::Result<Drawing, String>,
+    /// Page `index` (0-based) rendered at a resolution (dots per inch) to PNG: (png, width, height).
+    pub render_png: fn(&[u8], usize, f64) -> std::result::Result<(Vec<u8>, u32, u32), String>,
+}
+
+static PDF: OnceLock<PdfHooks> = OnceLock::new();
+
+pub fn set_pdf(h: PdfHooks) {
+    let _ = PDF.set(h);
+}
+pub fn pdf() -> Option<&'static PdfHooks> {
+    PDF.get()
 }
 
 /// An entity as DXF groups and back, for AutoLISP's `entget`, `entmake` and `entmod`

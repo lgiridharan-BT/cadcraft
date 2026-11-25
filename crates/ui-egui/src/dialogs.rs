@@ -362,6 +362,10 @@ fn about(ctx: &egui::Context, open: &mut bool) {
                     // BridgeTower GP modification: a modified build may not present itself as an
                     // ArtCraft product (docs/brand/LICENSE-brand.txt), only say what it is based on.
                     ui.label(RichText::new("BridgeTower GP build, based on CADCraft by the ArtCraft team and community. Not an official CADCraft release.").color(t.text_dim));
+                    // The GitHub build number and commit, set by the BridgeTower Windows build.
+                    if let Some(build) = option_env!("BT_BUILD") {
+                        ui.label(RichText::new(format!("Build {build}")).small().color(t.text_dim));
+                    }
                     ui.hyperlink_to("Original project: github.com/storytold/cadcraft", "https://github.com/storytold/cadcraft");
                     ui.hyperlink_to("This build: github.com/lgiridharan-BT/cadcraft", "https://github.com/lgiridharan-BT/cadcraft");
                     ui.add_space(6.0);

@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! CADCraft file formats: DXF/DWG read, SVG and SVGZ import, SVG/PNG/PDF export (plotting).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
@@ -18,6 +20,7 @@ mod dxf_table;
 mod dxf_write;
 mod dxf_xref;
 pub mod pdf;
+pub mod pdf_read;
 pub mod plotter;
 /// Raster image files (PNG, JPEG, BMP, TIFF) decoded to pixels.
 pub mod raster;
@@ -105,6 +108,10 @@ pub(crate) fn read_source(bytes: &[u8], name: &Path) -> Result<(Drawing, Option<
         let mut d = dxf_read::read(&dxf).map_err(|e| IoError::Format(format!("{e} (in the DXF converted from this DWG)")))?;
         d.read_notes = notes.into_iter().map(|note| cadcraft_dwg_message(&note)).collect();
         return Ok((d, Some(dxf)));
+    }
+    // BridgeTower GP: a PDF imports its first page's linework and text (PDFIMPORT picks others).
+    if ext(name) == "pdf" || pdf_read::is_pdf(bytes) && !bytes.starts_with(b"0\r\n") && !bytes.starts_with(b"  0") {
+        return pdf_read::read_page(bytes, 0).map(|(d, _)| (d, None));
     }
     let d = match (Format::from_path(name), ext(name).as_str()) {
         (Some(Format::Svg | Format::Svgz), _) => svg_read::read(bytes),

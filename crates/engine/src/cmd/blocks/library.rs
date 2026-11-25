@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Block libraries for the Blocks palette: a folder of drawings or a single drawing file whose
 //! blocks can be placed in the current drawing.
 //!
@@ -109,14 +111,16 @@ pub(super) fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("blocklibrary", "Block Library", run_library)
             .params("{path: a folder of DWG/DXF files, or one such file} → {kind: \"folder\", path, files: [{name, file}], truncated} | {kind: \"file\", path, blocks: [{name, description}], truncated}")
             .enabled(always)
-            .noundo(),
+            .noundo()
+            .interactive(|_| crate::cmd::asked::Asked::new("BLOCKLIBRARY", "blocklibrary", crate::cmd::asked::BLOCKLIBRARY).showing(crate::cmd::asked::Show::Result).boxed()),
         CommandSpec::new("blocklibraries", "Block Libraries", run_libraries)
             .params("{op?: \"list\" (default)|\"add\"|\"remove\", path? (add, remove)} → {libraries: [path], path? (add: the entry as kept)}")
             .enabled(always)
             .noundo(),
         CommandSpec::new("blocklibimport", "Import Library Block", run_import)
             .params("{path: DWG/DXF file, block?: the block to take from it (default: the whole drawing), name?: the block to define (default: `block`, else the file name; never one the drawing already has)} → {name}")
-            .enabled(has_doc),
+            .enabled(has_doc)
+            .interactive(|_| crate::cmd::asked::Asked::new("BLOCKLIBIMPORT", "blocklibimport", crate::cmd::asked::BLOCKLIBIMPORT).showing(crate::cmd::asked::Show::Result).boxed()),
     ]
 }
 

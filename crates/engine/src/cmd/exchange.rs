@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Moving drawings in and out: EXPORT (DXF, DWG, SVG, PNG or PDF), IMPORT (the objects of another
 //! DXF/DWG file), PREVIEW (a picture of the plot) and PUBLISH (plot several sheets at once).
 //! ATTACH, SHARE and 3DORBIT are registered so the tool bar and command line say they are not
@@ -56,10 +58,16 @@ pub fn specs() -> Vec<CommandSpec> {
             .params("{path?: \"DIR/NAME^NAME2.pdf\" (default: the drawing's file; a `^` splits the name into one book name per row of frames; else returns base64 `data` per book), names?: [book names], frameHeight?: mm (default 297), unit?: mm per drawing unit (default 1)} → {books: [{name, pages, bytes, path? | data}], skipped}: closed polylines of the frame height in model space are sheet frames; each row (same lower edge, bottom to top) is one PDF, its frames left to right one page each on the paper (ISO A-series, either orientation) they match")
             .noundo(),
         CommandSpec::new("attach", "Attach", |s, p| match str_param(p, "path").map(extension) {
-            Some(e) if super::image::is_image_ext(&e) => super::image::run_imageattach(s, p),
-            _ => Err(EngineError::Other("ATTACH is not available yet for this file: only raster images (PNG, JPEG, BMP, TIFF; see IMAGEATTACH) can be attached, PDF/DWF/DGN underlays can't be shown yet".into())),
+            Some(e) if super::image::is_image_ext(&e) || e == "pdf" => super::image::run_imageattach(s, p),
+            None => Err(bad("attach", "`path` is required")),
+            _ => Err(EngineError::Other("ATTACH is not available yet for this file: images (PNG, JPEG, BMP, TIFF) and PDF pages can be attached (see IMAGEATTACH and PDFIMPORT); DWF/DGN underlays can't be shown yet".into())),
         })
-        .params("{path: image file, …} as IMAGEATTACH; other file types are not available yet"),
+        .params("{path: image or PDF file, …} as IMAGEATTACH; other file types are not available yet")
+        .interactive(|_| super::asked::Asked::new("ATTACH", "attach", super::asked::IMAGEATTACH).with(&[("size", "native")]).boxed()),
+        CommandSpec::new("pdfimport", "PDF Import...", run_pdfimport)
+            .menu(&["Insert", "PDF Import..."])
+            .params("{path: PDF file | data: base64, page?: 1-based (default 1), at?: [x,y] (default 0,0), scale?: drawing units per paper inch, or a plot scale such as \"1/8\\\"=1'-0\\\"\" or \"1\\\"=20'\" or \"1:100\" (default 1)} → {imported, handles, layers, page: [w, h] inches, lines, polylines, circles, texts, fills, notes}: the page's vector linework (PDF_Geometry), solid fills' outlines (PDF_Solid Fills) and text (PDF_Text) as drawing objects, as AutoCAD's PDFIMPORT")
+            .interactive(|_| super::asked::Asked::new("PDFIMPORT", "pdfimport", super::asked::PDFIMPORT).boxed()),
         CommandSpec::new("share", "Share", |_, _| {
             Err(EngineError::Other("SHARE is not available yet: there is no online service to share through; EXPORT or PUBLISH the drawing and send the file".into()))
         })
@@ -157,6 +165,64 @@ fn run_import(s: &mut Session, p: &Value) -> Result<Value> {
     let src = (hooks.read)(&bytes, &name).map_err(|e| bad("import", e))?;
     let file = std::path::Path::new(&name).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
     import_drawing(s, &src, at, scale, &file)
+}
+
+// ---------- PDFIMPORT (BridgeTower GP) ----------
+
+fn run_pdfimport(s: &mut Session, p: &Value) -> Result<Value> {
+    let hooks = super::file::pdf().ok_or_else(|| bad("pdfimport", "PDF files can't be read in this build"))?;
+    let at = match p.get("at") {
+        Some(v) => point_value(v).ok_or_else(|| bad("pdfimport", "`at` must be a point [x, y]"))?,
+        None => Vec2::ZERO,
+    };
+    let scale = match p.get("scale") {
+        None | Some(Value::Null) => 1.0,
+        Some(Value::String(t)) => super::asked::units_per_paper_inch(t, s.doc()?)
+            .ok_or_else(|| bad("pdfimport", format!("`scale` {t:?} isn't a number or a plot scale such as 1/8\"=1'-0\", 1\"=20' or 1:100")))?,
+        Some(v) => v.as_f64().filter(|k| k.is_finite() && (1e-9..=1e9).contains(k)).ok_or_else(|| bad("pdfimport", "`scale` must be a positive number"))?,
+    };
+    let page = p.get("page").and_then(Value::as_f64).unwrap_or(1.0);
+    if !(page.is_finite() && page >= 1.0 && page.fract() == 0.0) {
+        return Err(bad("pdfimport", "`page` must be a page number (1 or more)"));
+    }
+    let (bytes, name) = if let Some(path) = str_param(p, "path") {
+        let host = s.state()?.path.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        let path = super::blocks::xref::find_file(path, host.as_deref()).map_or_else(|| path.to_string(), |f| f.to_string_lossy().to_string());
+        #[cfg(target_arch = "wasm32")]
+        let _ = host;
+        (read_file(&path)?, path)
+    } else {
+        let data = str_param(p, "data").ok_or_else(|| bad("pdfimport", "`path` or `data` (base64) is required"))?;
+        (base64_decode(data).ok_or_else(|| bad("pdfimport", "invalid base64"))?, "import.pdf".to_string())
+    };
+    let src = (hooks.read_page)(&bytes, page as usize - 1).map_err(|e| bad("pdfimport", e))?;
+    let count = |f: fn(&EntityKind) -> bool| src.model.iter().filter(|e| f(&e.kind)).count();
+    let lines = count(|k| matches!(k, EntityKind::Line(_)));
+    let polylines = count(|k| matches!(k, EntityKind::LwPolyline(_)));
+    let circles = count(|k| matches!(k, EntityKind::Circle(_)));
+    let texts = count(|k| matches!(k, EntityKind::Text(_)));
+    let fills = src.model.iter().filter(|e| e.common.layer == "PDF_Solid Fills").count();
+    let notes = src.read_notes.clone();
+    let page_size = (hooks.pages)(&bytes).ok().and_then(|v| v.get(page as usize - 1).copied()).unwrap_or_default();
+    let file = std::path::Path::new(&name).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let mut r = import_drawing(s, &src, at, scale, &file)?;
+    for n in &notes {
+        s.echo(n.clone());
+    }
+    r["page"] = json!([page_size.0, page_size.1]);
+    r["lines"] = json!(lines);
+    r["polylines"] = json!(polylines.saturating_sub(fills));
+    r["circles"] = json!(circles);
+    r["texts"] = json!(texts);
+    r["fills"] = json!(fills);
+    r["scale"] = json!(scale);
+    r["notes"] = json!(notes);
+    r["message"] = json!(format!(
+        "{} objects imported from page {} of {file}: {lines} lines, {} polylines, {circles} circles, {texts} texts, {fills} filled areas",
+        r["imported"], page as usize, polylines.saturating_sub(fills)
+    ));
+    Ok(r)
 }
 
 /// Copy `src`'s model space into the current space (scaled about the origin, then moved to
@@ -923,9 +989,14 @@ mod tests {
     #[test]
     fn attach_share_and_orbit_say_they_are_not_available_yet() {
         let mut s = session();
-        for c in ["attach", "share", "3dorbit", "orbit"] {
+        // BridgeTower GP: ATTACH takes images and PDF pages now; without a file it asks for one.
+        for c in ["share", "3dorbit", "orbit"] {
             let e = s.execute(&resolve_alias(c), &Value::Null).unwrap_err().to_string();
             assert!(e.contains("not available yet"), "{c}: {e}");
         }
+        let e = s.execute("attach", &Value::Null).unwrap_err().to_string();
+        assert!(e.contains("`path` is required"), "{e}");
+        let e = s.execute("attach", &serde_json::json!({ "path": "plan.dwf" })).unwrap_err().to_string();
+        assert!(e.contains("not available yet"), "{e}");
     }
 }

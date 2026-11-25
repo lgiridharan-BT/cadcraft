@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! `cadcraft-cli`: headless CADCraft. The subcommands and their options are the clap types in
 //! `args.rs`; `cadcraft-cli --help` lists them.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -46,6 +48,12 @@ fn install_io() {
         plot: Some(|d, space, opts| cadcraft_io::plotter::plot(d, space, opts).map_err(|e| e.to_string())),
     });
     cadcraft_engine::cmd::file::set_image_decoder(|b| cadcraft_io::raster::decode(b).map_err(|e| e.to_string()));
+    // BridgeTower GP: PDF import and PDF pages attached as images.
+    cadcraft_engine::cmd::file::set_pdf(cadcraft_engine::cmd::file::PdfHooks {
+        pages: |b| cadcraft_io::pdf_read::pages(b).map_err(|e| e.to_string()),
+        read_page: |b, i| cadcraft_io::pdf_read::read_page(b, i).map(|(d, _)| d).map_err(|e| e.to_string()),
+        render_png: |b, i, dpi| cadcraft_io::pdf_read::render_page_png(b, i, dpi).map_err(|e| e.to_string()),
+    });
     cadcraft_engine::cmd::file::set_write_as(|d, name, o| {
         cadcraft_io::write_with(d, name, &cadcraft_io::SaveOptions { version: o.version, binary: o.binary }).map_err(|e| e.to_string())
     });

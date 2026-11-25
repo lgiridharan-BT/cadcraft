@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026: PDF import and attach (see BRIDGETOWER-CHANGES.md).
+// Original: https://github.com/storytold/cadcraft
 //! Which commands automation may run while the automation roots are in force ([`super`]).
 //!
 //! The checks that hold a path to the roots sit where the file is touched, and a new command that
@@ -41,6 +43,8 @@ pub const FILES: &[&str] = &[
     "options",
     "pagesetup",
     "pdfbook",
+    // BridgeTower GP: reads the PDF through the import file checks.
+    "pdfimport",
     "plot",
     "plotstyle",
     "plottermanager",

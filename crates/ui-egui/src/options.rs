@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! OPTIONS: the user's preferences, in one dialog and one JSON form.
 //!
 //! Typed (OPTIONS, OP), chosen from Tools ▸ Options… or, on macOS, CADCraft ▸ Settings… (⌘,),
@@ -447,6 +449,7 @@ fn reset_ui(app: &mut CadApp) {
     let recent_files = std::mem::take(&mut app.ui.recent_files);
     let shortcuts = std::mem::take(&mut app.ui.shortcuts);
     let (last_lisp_dir, last_pgp_dir) = (app.ui.last_lisp_dir.take(), app.ui.last_pgp_dir.take());
+    let last_attach_dir = app.ui.last_attach_dir.take();
     app.ui = crate::UiState {
         interface_language: language,
         dialog,
@@ -455,6 +458,7 @@ fn reset_ui(app: &mut CadApp) {
         shortcuts,
         last_lisp_dir,
         last_pgp_dir,
+        last_attach_dir,
         ..Default::default()
     };
     // Where the host has no native menu bar the in-window one is the only menu: the reset must

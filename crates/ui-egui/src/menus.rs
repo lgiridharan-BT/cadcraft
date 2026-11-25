@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Menus (in-window menu bar; the native macOS menu is built from the same tree), UI-only
 //! commands and keyboard shortcuts.
 
@@ -443,6 +445,28 @@ fn run_ui_command_inner(app: &mut CadApp, id: &str, params: &Value) -> Option<Re
                     app.ui.last_lisp_dir = Some(dir.to_string());
                 }
                 app.start_after_pick("appload", was_prompting)?;
+                app.cmdline(&path);
+                Ok(Value::Null)
+            });
+        }
+        // BridgeTower GP: IMAGEATTACH, ATTACH and PDFIMPORT, typed or chosen from a menu, open a
+        // file picker; the rest of their questions (PDF page, insertion point, size or scale)
+        // are asked on the command line. JSON calls carry `path` and never open one, and without
+        // a picker the command asks for the file name instead.
+        "imageattach" | "iat" | "attach" | "pdfimport" if params.is_null() && app.services.pick_file.is_some() => {
+            let cmd: &'static str = match id {
+                "pdfimport" => "pdfimport",
+                "attach" => "attach",
+                _ => "imageattach",
+            };
+            let dir = app.ui.last_attach_dir.clone().unwrap_or_default();
+            let pick = if cmd == "pdfimport" { Pick::Pdf(dir) } else { Pick::Attach(dir) };
+            let was_prompting = app.session.prompting();
+            return app.pick_then(pick, move |app, path| {
+                if let Some(dir) = std::path::Path::new(&path).parent().and_then(std::path::Path::to_str).filter(|d| !d.is_empty()) {
+                    app.ui.last_attach_dir = Some(dir.to_string());
+                }
+                app.start_after_pick(cmd, was_prompting)?;
                 app.cmdline(&path);
                 Ok(Value::Null)
             });

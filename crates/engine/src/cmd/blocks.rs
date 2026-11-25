@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Blocks: BLOCK, INSERT, ATTDEF, ATTEDIT (programmatic), WBLOCK, BASE, PURGE, block listing, the
 //! Block Editor.
 
@@ -63,7 +65,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("wblockpick", "Write Block Pick", run_wblockpick)
             .params("{mode: \"objects\"|\"base\"}")
             .interactive(|_| Ok(Box::new(WblockPickM::default()))),
-        CommandSpec::new("base", "Base", run_base).menu(&["Draw", "Block", "Base"]).params("{at: [x,y]}"),
+        CommandSpec::new("base", "Base", run_base).menu(&["Draw", "Block", "Base"]).params("{at: [x,y]}").interactive(|_| super::asked::Asked::new("BASE", "base", super::asked::BASE).boxed()),
         CommandSpec::new("blocks.dynamic", "Dynamic Block Data", run_dynamic)
             .params("{name (a block, or \"*Model_Space\" for a drawing that is a dynamic block's own)} → {parameters, actions, other} | null (not a dynamic block)")
             .enabled(has_doc)

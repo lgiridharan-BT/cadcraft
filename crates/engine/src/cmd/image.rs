@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Raster images (IMAGEATTACH, IMAGE). An IMAGE entity names its file; the pixels are decoded
 //! when the drawing opens or the image is attached and kept with the open drawing
 //! ([`Drawing::rasters`]), never in the file. An image whose file can't be found or read stays in
@@ -34,12 +36,15 @@ const MAX_PATH: usize = 4096;
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        CommandSpec::new("imageattach", "Raster Image Reference...", run_imageattach).alias(&["iat"]).params(
+        CommandSpec::new("imageattach", "Raster Image Reference...", run_imageattach).menu(&["Insert", "Raster Image Reference..."]).alias(&["iat"]).params(
             "{path: PNG/JPEG/BMP/TIFF file (saved as given; a relative path is relative to this drawing's folder), data?: base64 file contents \
              (instead of reading `path`), at?: [x,y] lower-left corner (default 0,0), scale?: number (default 1: the image is one drawing unit \
              wide), width?: width in drawing units (instead of `scale`), rotation? (degrees), name? (default: the file name)} → {name, handle, \
-             path, pixels: [w, h], size: [w, h]}",
-        ),
+             path, pixels: [w, h], size: [w, h]}. BridgeTower GP: a PDF `path` attaches page `page` (default 1) rendered at `dpi` (default 200) \
+             as a PNG beside the PDF; `size: \"native\"` without `width`/`scale` sizes it as printed (a PDF page at paper size, a picture at \
+             96 pixels per inch)",
+        )
+        .interactive(|_| super::asked::Asked::new("IMAGEATTACH", "imageattach", super::asked::IMAGEATTACH).with(&[("size", "native")]).boxed()),
         CommandSpec::new("image", "Raster Images", run_image)
             .alias(&["im"])
             .params("{} → {images: [{name, path, foundAt, status: Loaded|Not Found|Not loaded, references, pixels?: [w, h]}]}")
@@ -263,12 +268,29 @@ fn def_name(d: &Drawing, path: &str, wanted: &str) -> String {
 const ID: &str = "imageattach";
 
 pub(crate) fn run_imageattach(s: &mut Session, p: &Value) -> Result<Value> {
-    let path = str_param(p, "path").map(str::trim).filter(|x| !x.is_empty()).ok_or_else(|| bad(ID, "`path` is required"))?.to_string();
+    let mut path = str_param(p, "path").map(str::trim).filter(|x| !x.is_empty()).ok_or_else(|| bad(ID, "`path` is required"))?.to_string();
     if path.len() > MAX_PATH {
         return Err(bad(ID, "`path` is too long"));
     }
-    let place = placement(p)?;
+    // BridgeTower GP: a PDF page is rendered to a PNG beside the PDF, which is then attached.
+    let mut native_inches = None;
+    if path.to_ascii_lowercase().ends_with(".pdf") && p.get("data").is_none() {
+        let (png, raster, page_inches) = pdf_page_image(s, p, &path)?;
+        s.doc_mut()?.rasters.insert(&png, raster);
+        native_inches = Some(page_inches);
+        path = png;
+    }
+    let native = p.get("size").and_then(Value::as_str) == Some("native") && p.get("width").is_none() && p.get("scale").is_none();
     let raster = pixels(s, p, &path)?;
+    let place = if native {
+        // The image's own size: a PDF page at paper size, a picture at 96 pixels per inch.
+        let inches = native_inches.unwrap_or(f64::from(raster.width()) / 96.0);
+        let mut q = p.clone();
+        q["width"] = json!(inches / super::asked::inches_per_unit(s.doc()?));
+        placement(&q)?
+    } else {
+        placement(p)?
+    };
     let (w, h) = (f64::from(raster.width()), f64::from(raster.height()));
     // One pixel in drawing units, along the image's bottom edge (`u`) and its left edge (`v`).
     let pixel = place.width / w;
@@ -291,6 +313,43 @@ pub(crate) fn run_imageattach(s: &mut Session, p: &Value) -> Result<Value> {
     s.doc_mut()?.rasters.insert(&path, raster);
     let handle = s.add_entity(EntityKind::Image(image))?;
     Ok(json!({ "name": name, "handle": handle.hex(), "path": path, "pixels": [w, h], "size": [place.width, pixel * h] }))
+}
+
+/// BridgeTower GP: page `page` (1-based, default 1) of the PDF at `path` rendered at `dpi`
+/// (default 200) and written as `<name>-page<N>.png` beside the PDF. Returns that file's path,
+/// its pixels and the page's width in inches.
+fn pdf_page_image(s: &Session, p: &Value, path: &str) -> Result<(String, Arc<Raster>, f64)> {
+    let hooks = super::file::pdf().ok_or_else(|| bad(ID, "PDF files can't be read in this build"))?;
+    let page = p.get("page").and_then(Value::as_f64).unwrap_or(1.0);
+    if !(page.is_finite() && page >= 1.0 && page.fract() == 0.0) {
+        return Err(bad(ID, "`page` must be a page number (1 or more)"));
+    }
+    let index = page as usize - 1;
+    let dpi = f64_or(p, "dpi", 200.0);
+    if !(dpi.is_finite() && (20.0..=1200.0).contains(&dpi)) {
+        return Err(bad(ID, "`dpi` must be between 20 and 1200"));
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let host = s.state()?.path.clone();
+        let file = super::blocks::xref::find_file(path, host.as_deref()).ok_or_else(|| bad(ID, format!("{path}: file not found")))?;
+        crate::file_access::check_read(&file).map_err(|e| bad(ID, format!("{path}: {e}")))?;
+        let bytes = crate::capped_read::read_capped(&file, 128 << 20).map_err(|e| bad(ID, format!("{path}: {e}")))?;
+        let sizes = (hooks.pages)(&bytes).map_err(|e| bad(ID, e))?;
+        let (inches, _) = *sizes.get(index).ok_or_else(|| bad(ID, format!("{path} has {} page(s), not {}", sizes.len(), index + 1)))?;
+        let (png, _, _) = (hooks.render_png)(&bytes, index, dpi).map_err(|e| bad(ID, e))?;
+        let stem = file.file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "pdf".into());
+        let out = file.with_file_name(format!("{stem}-page{}.png", index + 1));
+        crate::file_access::check_write(&out).map_err(|e| bad(ID, format!("{}: {e}", out.display())))?;
+        crate::atomic_write::write_atomic(&out, &png).map_err(|e| bad(ID, format!("{}: {e}", out.display())))?;
+        let raster = Arc::new(decode(&png).map_err(|e| bad(ID, e))?);
+        Ok((out.to_string_lossy().to_string(), raster, inches))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = (s, hooks, index, dpi);
+        Err(bad(ID, "PDF files can't be attached on the web"))
+    }
 }
 
 /// Where and how large IMAGEATTACH puts the image.

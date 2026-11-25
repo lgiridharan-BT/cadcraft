@@ -1,9 +1,12 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! The command registry. Ids are AutoCAD command names in lower case; menu paths follow
 //! AutoCAD's menu bar so the catalog doubles as the parity metric.
 
 pub(crate) mod annoscale;
 mod annotate;
 mod array;
+pub(crate) mod asked;
 mod audit;
 pub(crate) mod blocks;
 pub mod clipboard;

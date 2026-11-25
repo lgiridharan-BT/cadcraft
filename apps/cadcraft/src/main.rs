@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! CADCraft desktop app.
 //!
 //! Usage: `cadcraft [--control <port>] [--sample] [--new-window] [files…]` (`cadcraft --help` lists the rest; see [`launch_args`])
@@ -172,6 +174,12 @@ pub fn install_io() {
         plot: Some(|d, space, opts| cadcraft_io::plotter::plot(d, space, opts).map_err(|e| e.to_string())),
     });
     cadcraft_engine::cmd::file::set_image_decoder(|b| cadcraft_io::raster::decode(b).map_err(|e| e.to_string()));
+    // BridgeTower GP: PDF import and PDF pages attached as images.
+    cadcraft_engine::cmd::file::set_pdf(cadcraft_engine::cmd::file::PdfHooks {
+        pages: |b| cadcraft_io::pdf_read::pages(b).map_err(|e| e.to_string()),
+        read_page: |b, i| cadcraft_io::pdf_read::read_page(b, i).map(|(d, _)| d).map_err(|e| e.to_string()),
+        render_png: |b, i, dpi| cadcraft_io::pdf_read::render_page_png(b, i, dpi).map_err(|e| e.to_string()),
+    });
     cadcraft_engine::cmd::file::set_write_as(|d, name, o| {
         cadcraft_io::write_with(d, name, &cadcraft_io::SaveOptions { version: o.version, binary: o.binary }).map_err(|e| e.to_string())
     });
@@ -199,6 +207,8 @@ fn services() -> Services {
         pick_pgp: Some(Box::new(|dir: Option<&str>| {
             file_dialog(&Pick::Pgp(dir.unwrap_or_default().into())).pick_file().map(|p| p.to_string_lossy().to_string())
         })),
+        // BridgeTower GP: images and PDF pages to attach, PDFs to import.
+        pick_file: Some(Box::new(|pick: &Pick| file_dialog(pick).pick_file().map(|p| p.to_string_lossy().to_string()))),
     }
 }
 
@@ -214,6 +224,12 @@ fn filters(pick: &Pick) -> Vec<(&'static str, Vec<&'static str>)> {
         Pick::Save(name) => filters_for_save(name).iter().map(|(label, ext)| (i18n::t(label), vec![*ext])).collect(),
         Pick::Lisp(_) => vec![(i18n::t("AutoLISP (LSP)"), vec!["lsp"]), (i18n::t("All files"), vec!["*"])],
         Pick::Pgp(_) => vec![(i18n::t("Alias files (PGP)"), vec!["pgp"])],
+        Pick::Attach(_) => vec![
+            ("Images and PDF (PNG, JPEG, BMP, TIFF, PDF)", vec!["png", "jpg", "jpeg", "bmp", "tif", "tiff", "pdf"]),
+            ("PDF", vec!["pdf"]),
+            (i18n::t("All files"), vec!["*"]),
+        ],
+        Pick::Pdf(_) => vec![("PDF", vec!["pdf"]), (i18n::t("All files"), vec!["*"])],
     }
 }
 
@@ -222,7 +238,7 @@ fn file_dialog(pick: &Pick) -> rfd::FileDialog {
     let dialog = filters(pick).iter().fold(rfd::FileDialog::new(), |d, (label, exts)| d.add_filter(*label, exts));
     match pick {
         Pick::Save(name) => dialog.set_file_name(name),
-        Pick::Lisp(dir) | Pick::Pgp(dir) if !dir.is_empty() => dialog.set_directory(dir),
+        Pick::Lisp(dir) | Pick::Pgp(dir) | Pick::Attach(dir) | Pick::Pdf(dir) if !dir.is_empty() => dialog.set_directory(dir),
         _ => dialog,
     }
 }

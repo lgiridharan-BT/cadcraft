@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Table breaking (`table.break`) and data links (DATALINK, DATALINKUPDATE: cells filled from a
 //! CSV file).
 
@@ -24,7 +26,8 @@ pub fn specs() -> Vec<CommandSpec> {
             .interactive(|_| Ok(Box::new(BreakM::default()))),
         CommandSpec::new("datalink", "Data Link...", run_datalink)
             .menu(&["Insert", "Data Link..."])
-            .params("{handle, path (.csv, .txt/.tsv tab-separated), startRow? (default: below the title), remove?: bool} → {rows, cols}"),
+            .params("{handle, path (.csv, .txt/.tsv tab-separated), startRow? (default: below the title), remove?: bool} → {rows, cols}")
+            .interactive(|_| crate::cmd::asked::Asked::new("DATALINK", "datalink", crate::cmd::asked::DATALINK).showing(crate::cmd::asked::Show::Result).boxed()),
         CommandSpec::new("datalinkupdate", "Update Data Links", run_update)
             .params("{handles?} (default: every linked table) → {updated}")
             .interactive(|_| Ok(Box::new(SelectRun::new("datalinkupdate", "DATALINKUPDATE")))),

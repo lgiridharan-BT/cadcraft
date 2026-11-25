@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! AutoLISP commands: APPLOAD loads a `.lsp` file; `lisp` evaluates LISP for programmatic
 //! callers (scripts, the control channel, MCP, the CLI).
 
@@ -19,7 +21,8 @@ pub fn specs() -> Vec<CommandSpec> {
             .params(
                 "{code: LISP source, inputs?: [answers to get… calls: numbers, strings, [x,y] points]} → {value (printed as prin1), output: lines printed, error?}",
             )
-            .noundo(),
+            .noundo()
+            .interactive(|_| super::asked::Asked::new("LISP", "lisp", super::asked::LISP).showing(super::asked::Show::Result).boxed()),
     ]
 }
 

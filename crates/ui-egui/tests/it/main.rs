@@ -55,3 +55,4 @@ mod typed_open;
 mod viewport_double_click_selection;
 mod workspace_focus;
 mod zoomed_far_in;
+mod bt_paste_and_pickers;

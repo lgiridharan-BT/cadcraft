@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Drafting settings and system variables: ORTHO, OSNAP, GRID, SNAP, POLAR, SETVAR/GETVAR.
 
 use serde_json::{Value, json};
@@ -103,7 +105,7 @@ pub fn specs() -> Vec<CommandSpec> {
             .params("{name, value}")
             .transparent()
             .interactive(|_| Ok(Box::new(SetvarM::default()))),
-        CommandSpec::new("getvar", "Get Variable", run_getvar).params("{name}").enabled(always).noundo(),
+        CommandSpec::new("getvar", "Get Variable", run_getvar).params("{name}").enabled(always).noundo().interactive(|_| super::asked::Asked::new("GETVAR", "getvar", super::asked::GETVAR).showing(super::asked::Show::Variable).boxed()),
         CommandSpec::new("sysvars", "List System Variables", |s, _| Ok(crate::sysvars::list(s))).enabled(always).noundo(),
     ]
 }

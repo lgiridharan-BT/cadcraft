@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! Layers: LAYER (programmatic sub-ids, -LAYER prompts), layer tools (LAYMCUR, LAYISO, LAYOFF, LAYFRZ…).
 
 mod prompts;
@@ -25,10 +27,10 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("layer.current", "Make Current", run_current)
             .menu(&["Format", "Layer Tools", "Make Current"])
             .alias(&["clayer"])
-            .params("{name}"),
+            .params("{name}").interactive(|_| super::asked::Asked::new("CLAYER", "layer.current", super::asked::CLAYER).boxed()),
         CommandSpec::new("layer.delete", "Delete Layer", run_delete).params("{name}"),
         CommandSpec::new("laymcur", "Make Object's Layer Current", run_laymcur).params("{handles?}"),
-        CommandSpec::new("laymch", "Layer Match", run_laymch).menu(&["Format", "Layer Tools", "Layer Match"]).params("{handles?, layer}"),
+        CommandSpec::new("laymch", "Layer Match", run_laymch).menu(&["Format", "Layer Tools", "Layer Match"]).params("{handles?, layer}").interactive(|_| super::asked::Asked::new("LAYMCH", "laymch", super::asked::LAYMCH).boxed()),
         CommandSpec::new("laycur", "Change to Current Layer", run_laycur)
             .menu(&["Format", "Layer Tools", "Change to Current Layer"])
             .params("{handles?}")

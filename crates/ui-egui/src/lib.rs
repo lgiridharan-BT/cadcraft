@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! The CADCraft egui front end.
 //!
 //! A thin shell over [`cadcraft_engine::Session`]: panels read engine state and act through
@@ -139,6 +141,8 @@ pub struct UiState {
     /// Drawings opened from a path, newest first (File ▸ Open Recent and the Start page).
     pub recent_files: Vec<String>,
     /// The folder the last APPLOAD file came from: the next pick starts there.
+    /// BridgeTower GP: the folder the last image or PDF was attached or imported from.
+    pub last_attach_dir: Option<String>,
     pub last_lisp_dir: Option<String>,
     /// The folder the Command Aliases dialog last imported a `.pgp` file from.
     pub last_pgp_dir: Option<String>,
@@ -219,6 +223,7 @@ impl Default for UiState {
             save_format: SaveFormat::default(),
             save_version: SaveVersion::default().year().to_string(),
             recent_files: Vec::new(),
+            last_attach_dir: None,
             last_lisp_dir: None,
             last_pgp_dir: None,
         }
@@ -245,6 +250,8 @@ pub struct Services {
     pub no_file_system: bool,
     /// Pick a `.pgp` alias file, starting in the folder given (the last import's).
     pub pick_pgp: Option<Box<dyn Fn(Option<&str>) -> Option<String>>>,
+    /// BridgeTower GP: the other file dialogs ([`Pick::Attach`], [`Pick::Pdf`]).
+    pub pick_file: Option<Box<dyn Fn(&Pick) -> Option<String>>>,
 }
 
 /// The file dialog to show: Open, Save with the suggested file name, APPLOAD's `.lsp` picker or
@@ -255,6 +262,10 @@ pub enum Pick {
     Save(String),
     Lisp(String),
     Pgp(String),
+    /// BridgeTower GP: an image or PDF file to attach (IMAGEATTACH, ATTACH), starting in the folder given.
+    Attach(String),
+    /// BridgeTower GP: a PDF file to import (PDFIMPORT), starting in the folder given.
+    Pdf(String),
 }
 
 /// Shows a file dialog without waiting for it and calls the callback (from any thread) with the
@@ -476,6 +487,7 @@ impl CadApp {
             Pick::Save(_) => self.services.pick_save.is_some(),
             Pick::Lisp(_) => self.services.pick_lisp.is_some(),
             Pick::Pgp(_) => self.services.pick_pgp.is_some(),
+            Pick::Attach(_) | Pick::Pdf(_) => self.services.pick_file.is_some(),
         };
         if !available {
             return None;
@@ -508,6 +520,7 @@ impl CadApp {
             Pick::Save(name) => self.services.pick_save.as_ref().and_then(|f| f(name)),
             Pick::Lisp(dir) => self.services.pick_lisp.as_ref().and_then(|f| f(dir)),
             Pick::Pgp(dir) => self.services.pick_pgp.as_ref().and_then(|f| f(Some(dir.as_str()).filter(|d| !d.is_empty()))),
+            Pick::Attach(_) | Pick::Pdf(_) => self.services.pick_file.as_ref().and_then(|f| f(&pick)),
         };
         Some(match path {
             Some(path) => then(self, path),

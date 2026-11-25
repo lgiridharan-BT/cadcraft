@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026: PDF import and attach (see BRIDGETOWER-CHANGES.md).
+// Original: https://github.com/storytold/cadcraft
 //! Raster images (#956): IMAGEATTACH from a file and from handed-over bytes, the pixels loaded
 //! again when the drawing is reopened, a missing file left as a frame, and bad input refused.
 
@@ -138,7 +140,8 @@ fn bad_input_is_refused_and_changes_nothing() {
         assert!(s.execute("imageattach", &p).is_err(), "{p}");
     }
     assert!(images(&s).is_empty());
-    assert!(s.execute("attach", &json!({ "path": "plan.pdf" })).unwrap_err().to_string().contains("not available yet"));
+    // BridgeTower GP: PDF pages attach now (bt_pdf_and_prompts.rs); DWF still can't.
+    assert!(s.execute("attach", &json!({ "path": "plan.dwf" })).unwrap_err().to_string().contains("not available yet"));
     assert_eq!(listed(&mut s), json!([]));
 }
 

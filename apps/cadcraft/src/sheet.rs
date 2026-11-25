@@ -1,3 +1,5 @@
+// Modified by BridgeTower GP, November 2026 (PDF import/attach, typed-command prompts, paste fixes).
+// See BRIDGETOWER-CHANGES.md. Original: https://github.com/storytold/cadcraft
 //! macOS file dialogs as sheets. Shown in line, or from a helper thread that rfd hands to the main
 //! thread's modal loop, a panel runs AppKit's modal event loop; resizing it sends window events
 //! back into winit's event handler and winit aborts the app (#1527). A sheet returns at once and
@@ -36,7 +38,7 @@ pub fn start_pick(window: Arc<winit::window::Window>, ui: egui::Context) -> Star
                 let picked = dialog.set_file_name(name).save_file();
                 Box::pin(async move { picked.await.map(path) })
             }
-            Pick::Lisp(dir) | Pick::Pgp(dir) => {
+            Pick::Lisp(dir) | Pick::Pgp(dir) | Pick::Attach(dir) | Pick::Pdf(dir) => {
                 let dialog = if dir.is_empty() { dialog } else { dialog.set_directory(dir) };
                 let picked = dialog.pick_file();
                 Box::pin(async move { picked.await.map(path) })

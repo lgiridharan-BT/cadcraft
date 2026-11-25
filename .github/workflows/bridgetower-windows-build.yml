@@ -22,6 +22,8 @@ jobs:
       CARGO_TERM_COLOR: always
       # Static C runtime: the exe runs on a PC without the Visual C++ redistributable.
       RUSTFLAGS: -C target-feature=+crt-static
+      # Shown in Help > About, so anyone can tell which build a laptop has.
+      BT_BUILD: "#${{ github.run_number }} (${{ github.sha }})"
     steps:
       - uses: actions/checkout@v4
 
@@ -34,7 +36,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Engine tests (Z / ID and the main suite)
-        run: cargo test --release -p cadcraft-engine --test it
+        run: cargo test --release -p cadcraft-engine --test it --test bt_pdf_and_prompts
+
+      - name: PDF reader tests
+        run: cargo test --release -p cadcraft-io --lib pdf_read
 
       - name: Build cadcraft.exe
         run: cargo build --release -p cadcraft -p cadcraft-cli
