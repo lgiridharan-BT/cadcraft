@@ -36,15 +36,18 @@ const MAX_PATH: usize = 4096;
 
 pub fn specs() -> Vec<CommandSpec> {
     vec![
-        CommandSpec::new("imageattach", "Raster Image Reference...", run_imageattach).menu(&["Insert", "Raster Image Reference..."]).alias(&["iat"]).params(
-            "{path: PNG/JPEG/BMP/TIFF file (saved as given; a relative path is relative to this drawing's folder), data?: base64 file contents \
+        CommandSpec::new("imageattach", "Raster Image Reference...", run_imageattach)
+            .menu(&["Insert", "Raster Image Reference..."])
+            .alias(&["iat"])
+            .params(
+                "{path: PNG/JPEG/BMP/TIFF file (saved as given; a relative path is relative to this drawing's folder), data?: base64 file contents \
              (instead of reading `path`), at?: [x,y] lower-left corner (default 0,0), scale?: number (default 1: the image is one drawing unit \
              wide), width?: width in drawing units (instead of `scale`), rotation? (degrees), name? (default: the file name)} → {name, handle, \
              path, pixels: [w, h], size: [w, h]}. BridgeTower GP: a PDF `path` attaches page `page` (default 1) rendered at `dpi` (default 200) \
              as a PNG beside the PDF; `size: \"native\"` without `width`/`scale` sizes it as printed (a PDF page at paper size, a picture at \
              96 pixels per inch)",
-        )
-        .interactive(|_| super::asked::Asked::new("IMAGEATTACH", "imageattach", super::asked::IMAGEATTACH).with(&[("size", "native")]).boxed()),
+            )
+            .interactive(|_| super::asked::Asked::new("IMAGEATTACH", "imageattach", super::asked::IMAGEATTACH).with(&[("size", "native")]).boxed()),
         CommandSpec::new("image", "Raster Images", run_image)
             .alias(&["im"])
             .params("{} → {images: [{name, path, foundAt, status: Loaded|Not Found|Not loaded, references, pixels?: [w, h]}]}")

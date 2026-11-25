@@ -53,8 +53,15 @@ fn a_pasted_picture_is_saved_and_attached_in_the_view() {
     let picture = egui::ColorImage::new([40, 20], vec![egui::Color32::from_rgb(10, 120, 200); 40 * 20]);
     h.event(Event::PasteImage(Arc::new(picture)));
     h.run_steps(2);
-    let images: Vec<_> =
-        h.state().session.doc().unwrap().model.iter().filter_map(|e| if let EntityKind::Image(i) = &e.kind { Some(i.clone()) } else { None }).collect();
+    let images: Vec<_> = h
+        .state()
+        .session
+        .doc()
+        .unwrap()
+        .model
+        .iter()
+        .filter_map(|e| if let EntityKind::Image(i) = &e.kind { Some(i.clone()) } else { None })
+        .collect();
     assert_eq!(images.len(), 1, "{:?}", h.state().session.log.last());
     let saved = std::path::Path::new(&images[0].path);
     assert!(saved.starts_with(dir.join("site plan images")) && saved.is_file(), "{saved:?}");

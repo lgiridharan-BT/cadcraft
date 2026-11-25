@@ -45,8 +45,12 @@ pub fn mirror(app: &CadApp, ctx: &egui::Context) {
 /// own last copy (another CADCraft's) becomes the clipboard first.
 pub fn shortcut_commands(app: &mut CadApp, ctx: &egui::Context) -> Vec<&'static str> {
     let (events, shift) = ctx.input(|i| {
-        let ev: Vec<egui::Event> =
-            i.events.iter().filter(|e| matches!(e, egui::Event::Copy | egui::Event::Cut | egui::Event::Paste(_) | egui::Event::PasteImage(_))).cloned().collect();
+        let ev: Vec<egui::Event> = i
+            .events
+            .iter()
+            .filter(|e| matches!(e, egui::Event::Copy | egui::Event::Cut | egui::Event::Paste(_) | egui::Event::PasteImage(_)))
+            .cloned()
+            .collect();
         (ev, i.modifiers.shift)
     });
     let mut out = Vec::new();

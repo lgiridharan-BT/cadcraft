@@ -179,7 +179,9 @@ fn run_pdfimport(s: &mut Session, p: &Value) -> Result<Value> {
         None | Some(Value::Null) => 1.0,
         Some(Value::String(t)) => super::asked::units_per_paper_inch(t, s.doc()?)
             .ok_or_else(|| bad("pdfimport", format!("`scale` {t:?} isn't a number or a plot scale such as 1/8\"=1'-0\", 1\"=20' or 1:100")))?,
-        Some(v) => v.as_f64().filter(|k| k.is_finite() && (1e-9..=1e9).contains(k)).ok_or_else(|| bad("pdfimport", "`scale` must be a positive number"))?,
+        Some(v) => {
+            v.as_f64().filter(|k| k.is_finite() && (1e-9..=1e9).contains(k)).ok_or_else(|| bad("pdfimport", "`scale` must be a positive number"))?
+        }
     };
     let page = p.get("page").and_then(Value::as_f64).unwrap_or(1.0);
     if !(page.is_finite() && page >= 1.0 && page.fract() == 0.0) {
@@ -220,7 +222,9 @@ fn run_pdfimport(s: &mut Session, p: &Value) -> Result<Value> {
     r["notes"] = json!(notes);
     r["message"] = json!(format!(
         "{} objects imported from page {} of {file}: {lines} lines, {} polylines, {circles} circles, {texts} texts, {fills} filled areas",
-        r["imported"], page as usize, polylines.saturating_sub(fills)
+        r["imported"],
+        page as usize,
+        polylines.saturating_sub(fills)
     ));
     Ok(r)
 }

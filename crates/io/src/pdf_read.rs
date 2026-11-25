@@ -16,7 +16,8 @@ use cadcraft_doc::{Circle, Common, Drawing, EntityKind, Line, LwPolyline, Space,
 use cadcraft_geom::{PolyVertex, Vec2, Vec3};
 use craft_pdf::interpret::font::Glyph;
 use craft_pdf::interpret::{
-    BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, RectExt, SoftMask, TransformExt,
+    BlendMode, ClipPath, Context, Device, GlyphDrawMode, Image, InterpreterCache, InterpreterSettings, Paint, PathDrawMode, RectExt, SoftMask,
+    TransformExt,
 };
 use kurbo::{Affine, BezPath, PathEl, Point};
 
@@ -251,7 +252,12 @@ impl Device<'_> for Collector {
         let path = transform * path.clone();
         let filled = matches!(mode, PathDrawMode::Fill(_));
         // A fill and then a stroke of the same path (PDF's `B` operator) is one object.
-        if !filled && let Some(last) = self.paths.last_mut() && last.filled && !last.stroked && last.path == path {
+        if !filled
+            && let Some(last) = self.paths.last_mut()
+            && last.filled
+            && !last.stroked
+            && last.path == path
+        {
             last.stroked = true;
             return;
         }
@@ -342,7 +348,10 @@ fn shape(sub: &[PathEl], to_cad: &impl Fn(Point) -> Vec2) -> Option<EntityKind> 
     let closed = matches!(sub.last(), Some(PathEl::ClosePath)) || ends_at_start && sub.len() > 3;
     // Curves, or (where the interpreter hands them over already flattened) many short segments.
     let has_curves = sub.iter().any(|e| matches!(e, PathEl::CurveTo(..) | PathEl::QuadTo(..))) || sub.len() >= 24;
-    if closed && has_curves && let Some(c) = circle(sub, to_cad) {
+    if closed
+        && has_curves
+        && let Some(c) = circle(sub, to_cad)
+    {
         return Some(c);
     }
     let mut pts: Vec<Vec2> = Vec::new();

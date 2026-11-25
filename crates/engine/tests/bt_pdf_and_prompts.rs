@@ -82,13 +82,7 @@ fn pdfimport_brings_in_linework_and_text_at_a_plot_scale() {
     assert_eq!(r["page"], json!([8.5, 11.0]));
     let l = &lines(&s)[0];
     assert!(close(l.a.x, 1000.0 + 96.0) && close(l.a.y, 96.0) && close(l.b.x, 1000.0 + 192.0), "{l:?}");
-    let t = s
-        .doc()
-        .unwrap()
-        .model
-        .iter()
-        .find_map(|e| if let EntityKind::Text(t) = &e.kind { Some(t.clone()) } else { None })
-        .unwrap();
+    let t = s.doc().unwrap().model.iter().find_map(|e| if let EntityKind::Text(t) = &e.kind { Some(t.clone()) } else { None }).unwrap();
     assert_eq!(t.value, "BEDROOM 2");
     assert!(close(t.insert.x, 1000.0 + 96.0) && close(t.insert.y, 192.0), "{t:?}");
     assert!(s.doc().unwrap().layers.iter().any(|l| l.name == "PDF_Geometry") && s.doc().unwrap().layers.iter().any(|l| l.name == "PDF_Text"));
@@ -202,8 +196,25 @@ fn typed_commands_ask_on_the_command_line_instead_of_failing() {
 fn no_typed_command_fails_for_a_missing_value_any_more() {
     hooks();
     for name in [
-        "base", "blocklibrary", "blocklibimport", "clayer", "laymch", "attach", "imageattach", "iat", "color", "col", "colour", "lweight", "lw",
-        "lineweight", "limits", "getvar", "datalink", "lisp", "pdfimport",
+        "base",
+        "blocklibrary",
+        "blocklibimport",
+        "clayer",
+        "laymch",
+        "attach",
+        "imageattach",
+        "iat",
+        "color",
+        "col",
+        "colour",
+        "lweight",
+        "lw",
+        "lineweight",
+        "limits",
+        "getvar",
+        "datalink",
+        "lisp",
+        "pdfimport",
     ] {
         let mut s = Session::new();
         s.execute("line", &json!({ "points": [[0, 0], [10, 0]] })).unwrap();

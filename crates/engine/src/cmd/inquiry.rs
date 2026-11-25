@@ -286,7 +286,9 @@ pub(crate) fn z_at(s: &Session, p: Vec2) -> f64 {
     crate::select::candidates(d, &space, &ix, &probe.expand(ap), true, true)
         .into_iter()
         .flatten()
-        .filter(|(e, known)| d.is_visible(e) && (crate::select::is_infinite(e) || crate::select::bounds_of(d, e, *known).expand(ap).intersects(&probe)))
+        .filter(|(e, known)| {
+            d.is_visible(e) && (crate::select::is_infinite(e) || crate::select::bounds_of(d, e, *known).expand(ap).intersects(&probe))
+        })
         .filter_map(|(e, _)| match &e.kind {
             EntityKind::Insert(ins) => insert_z(d, ins, p, ap),
             _ => Some((at_distance(d, e, p, ap), entity_z(e, p)?)),
@@ -316,7 +318,17 @@ fn at_distance(d: &cadcraft_doc::Drawing, e: &Entity, p: Vec2, ap: f64) -> f64 {
 /// [`at_distance`]: its distance from `p` and its Z there in world coordinates.
 fn insert_z(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, p: Vec2, ap: f64) -> Option<(f64, f64)> {
     #[allow(clippy::too_many_arguments)]
-    fn walk(d: &cadcraft_doc::Drawing, ins: &cadcraft_doc::Insert, m: &cadcraft_geom::Mat3, z0: f64, zs: f64, depth: usize, p: Vec2, ap: f64, best: &mut Option<(f64, f64)>) {
+    fn walk(
+        d: &cadcraft_doc::Drawing,
+        ins: &cadcraft_doc::Insert,
+        m: &cadcraft_geom::Mat3,
+        z0: f64,
+        zs: f64,
+        depth: usize,
+        p: Vec2,
+        ap: f64,
+        best: &mut Option<(f64, f64)>,
+    ) {
         if depth >= cadcraft_doc::MAX_BLOCK_DEPTH {
             return;
         }

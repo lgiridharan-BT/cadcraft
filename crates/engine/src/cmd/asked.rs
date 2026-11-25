@@ -255,7 +255,8 @@ pub(crate) const CLAYER: &[Q] = &[q("name", Kind::Text, "Enter new value for CLA
 pub(crate) const LAYMCH: &[Q] =
     &[q("handles", Kind::Objects, "Select objects to be changed"), q("layer", Kind::Text, "Enter the destination layer's name")];
 pub(crate) const COLOR: &[Q] = &[q("color", Kind::Text, "Enter default object color (ByLayer, ByBlock, a name such as red, 1-255, or r,g,b)")];
-pub(crate) const LWEIGHT: &[Q] = &[q("lineweight", Kind::Text, "Enter default lineweight for new objects (millimetres, ByLayer, ByBlock or Default)")];
+pub(crate) const LWEIGHT: &[Q] =
+    &[q("lineweight", Kind::Text, "Enter default lineweight for new objects (millimetres, ByLayer, ByBlock or Default)")];
 pub(crate) const LIMITS: &[Q] = &[q("min", Kind::Point, "Specify lower left corner"), q("max", Kind::Point, "Specify upper right corner")];
 pub(crate) const GETVAR: &[Q] = &[q("name", Kind::Text, "Enter variable name")];
 pub(crate) const LISP: &[Q] = &[q("code", Kind::Text, "Enter an AutoLISP expression")];
